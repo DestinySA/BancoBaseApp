@@ -14,10 +14,13 @@ def _clean_data(input_file, output_file):
     status_descriptions = ["refunded", "charged_back", "pre_authorized", "paid", "partially_refunded", "pending_payment", "expired", "voided"]
     # Carga del archivo a procesar
     data = spark.read.csv(input_file, header=True)
-    # 1. Limpieza del campo estatus para valores inexistentes
-    # 2. Homologacion de la longitud del campo created_at en formato 2021-10-21
-    clean_data = data \
-        .withColumn("status", when(data.status.isin(status_descriptions), data.status).otherwise(lit("not_description"))) \
+    # 1. Correccion de valores atipicos del campo name con base al campo company_id
+    # 2. Correccion de valores atipicos del campo company_id con base al campo name
+    data = data.withColumn("name", when(data.company_id == "cbf1c8b09cd5b549416d49d220a40cbd317f952e", "MiPasajefy").otherwise(data.name))
+    data = data.withColumn("company_id", when(data.name == "MiPasajefy", "cbf1c8b09cd5b549416d49d220a40cbd317f952e").otherwise(data.company_id))
+    # 3. Limpieza del campo estatus para valores inexistentes
+    # 4. Homologacion de la longitud del campo created_at en formato 2021-10-21
+    clean_data = data.withColumn("status", when(data.status.isin(status_descriptions), data.status).otherwise(lit("not_description"))) \
         .withColumn("created_at",
             when(length(data.created_at) == 8,concat_ws("-", substring(data.created_at, 1, 4), substring(data.created_at, 5, 2), substring(data.created_at, 7, 2)))
             .when(length(data.created_at) > 10, substring(data.created_at, 1, 10))
